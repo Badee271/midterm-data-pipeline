@@ -1,0 +1,7 @@
+order_id,customer_id,price,phone,email,order_date,order_status,items
+O1001,C1001,5000 ريال,+967 777-123-456,user@@mail..com,31/01/2025,مؤكد,"[{""sku"": ""A"", ""qty"": 1}]"
+O1002,C1002,٥٠٠٠ ريال,777 222 333,user@example.com,2025-01-31,مدفوع,"[{""sku"": ""B"", ""qty"": 2}]"
+O1003,,1000,777123456,bad-email,2025-01-31,مؤكد,"[{""sku"": ""C""}]"
+O1004,C1004,not-a-price,777123456,user@example.com,2025-01-31,مؤكد,"[{""sku"": ""D""}]"
+O1005,C1005,2500,777123456,user@example.com,31/02/2025,مؤكد,"[{""sku"": ""E""}]"
+O1006,C1006,2500,777123456,user@example.com,2025-01-31,مؤكد,not-json

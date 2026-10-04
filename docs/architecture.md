@@ -1,6 +1,6 @@
 # Architecture
 
-## Stages
+## Midterm stages
 
 1. **Discovery:** read path, size, and create a unique `run_id`.
 2. **Router:** use Python Batch at or below `SMALL_FILE_THRESHOLD_MB`; use PySpark above it.
@@ -8,11 +8,18 @@
 4. **Transform & Quality:** normalize only deterministic values and retain all corrections in an audit trail.
 5. **Classification:** route each row to `valid`, `corrected`, or `quarantine`.
 6. **Final Load:** upsert valid/corrected records by stable business key `order_id`; store unrepairable records with error codes and raw data.
-7. **Metrics:** write counters, throughput, configuration, and consistency checks to `reports/results.json`.
+
+## Final-phase modules
+
+- `final_queries.py`: five operational queries, three indexes including a compound index, and `executionStats` Explain before/after index creation.
+- `final_aggregations.py`: five named reports with independent execution functions.
+- `materialized_views.py`: `daily_sales_summary` and `top_products_summary`, refreshed incrementally using `updated_at` watermarks and `$inc` updates.
+- `scheduled_jobs.py`: two named jobs with documented interval schedules, start/end logs, and success/failure status.
+- `api.py`: FastAPI facade with `/health`, `/ingest`, `/indexes`, `/queries`, `/aggregations`, `/views`, `/jobs`, and Swagger at `/docs`.
 
 ## Idempotency policy
 
-`orders_raw` is historical by `run_id`; replaying a source creates a new raw run for traceability. Business state is idempotent because `orders_validated` has a unique index on `order_id` and uses `update_one(..., upsert=True)`. A replay therefore produces no new business key. `updated_count` and `unchanged_count` make the outcome observable.
+`orders_raw` is historical by `run_id`; replaying a source creates a new raw run for traceability. Business state is idempotent because `orders_validated` has a unique index on `order_id` and uses `update_one(..., upsert=True)`. A replay therefore produces no new business key. `updated_at` is recorded for incremental view refreshes.
 
 ## Spark notes
 

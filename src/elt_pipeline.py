@@ -26,6 +26,7 @@ def process_elt_transformation(run_id):
                 "quarantined_at": datetime.now(timezone.utc)})
             continue
         counts["corrected_count" if status == "corrected" else "valid_count"] += 1
+        validated_doc["updated_at"] = datetime.now(timezone.utc)
         result = valid_col.update_one({"order_id": validated_doc["order_id"]}, {"$set": validated_doc}, upsert=True)
         if result.upserted_id is not None:
             counts["inserted_count"] += 1

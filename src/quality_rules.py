@@ -119,12 +119,28 @@ def process_record(raw_record: dict):
     if not isinstance(items, (list, dict)) or (isinstance(items, list) and not items):
         return _quarantine("EMPTY_ITEMS")
 
+    normalized_items = items
+    if isinstance(items, list):
+        normalized_items = []
+        for item in items:
+            if isinstance(item, dict):
+                item = dict(item)
+                if "qty" in item:
+                    try:
+                        quantity = float(item["qty"])
+                        item["qty"] = int(quantity) if quantity.is_integer() else quantity
+                    except (TypeError, ValueError):
+                        item["qty"] = 1
+                normalized_items.append(item)
+            else:
+                normalized_items.append(item)
+
     status_value = "corrected" if corrections else "valid"
     validated = {
         "order_id": str(order_id).strip(), "customer_id": str(customer_id).strip(),
         "price": price, "currency": "YER", "phone": phone, "email": email,
         "order_date": formatted_date or date_text, "order_status": status,
-        "items": items, "quality_status": status_value, "corrections": corrections,
+        "items": normalized_items, "quality_status": status_value, "corrections": corrections,
         "run_id": raw_record.get("run_id"), "source_file": raw_record.get("source_file"),
     }
     return validated, [], status_value

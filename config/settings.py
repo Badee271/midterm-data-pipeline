@@ -12,5 +12,9 @@ BATCH_SIZE = int(os.getenv("BATCH_SIZE", "5000"))
 MONGO_BATCH_SIZE = int(os.getenv("MONGO_BATCH_SIZE", "1000"))
 REPORTS_DIR = os.getenv("REPORTS_DIR", str(PROJECT_ROOT / "reports"))
 RESULTS_FILE = os.path.join(REPORTS_DIR, "results.json")
+EXPLAIN_REPORT_FILE = os.path.join(REPORTS_DIR, "explain_results.json")
 SPARK_APP_NAME = os.getenv("SPARK_APP_NAME", "HybridDataPipeline")
 SPARK_MASTER = os.getenv("SPARK_MASTER", "local[*]")
+ENABLE_SCHEDULER = os.getenv("ENABLE_SCHEDULER", "false").lower() == "true"
+API_TITLE = "Hybrid Data Pipeline API"
+API_VERSION = "2.0.0"

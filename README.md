@@ -1,16 +1,31 @@
-# Hybrid Data Pipeline — Midterm Submission
+# Hybrid E-Commerce Data Pipeline — Final Submission
 
-مشروع فردي لمقرر البيانات الضخمة العملي. ينفذ خط ELT لمعالجة بيانات الطلبات باستخدام Python Batch للملفات الصغيرة وApache Spark للملفات الكبيرة، مع MongoDB وتنظيف البيانات والعزل وإعادة التشغيل الآمنة.
+مشروع مقرر البيانات الضخمة العملي. يحتوي هذا الفرع على المشروع النصفي بالإضافة إلى متطلبات المرحلة النهائية.
 
-## المتطلبات
+## محتويات المشروع
+
+- `src/main.py`: نقطة تشغيل خط البيانات النصفي.
+- `src/batch_loader.py`: تحميل Python Batch للملفات الصغيرة.
+- `src/spark_loader.py`: تحميل PySpark للملفات الكبيرة.
+- `src/quality_rules.py`: قواعد التنظيف والتصنيف.
+- `src/final_queries.py`: الاستعلامات والفهارس وExplain.
+- `src/final_aggregations.py`: تقارير التجميع الخمسة.
+- `src/materialized_views.py`: العرضان الماديان والتحديث التزايدي.
+- `src/scheduled_jobs.py`: المهام المجدولة.
+- `src/api.py`: الواجهة الموحدة.
+- `tests/`: اختبارات المرحلتين.
+- `data/orders_sample.csv`: عينة صغيرة للتجربة.
+- `docs/architecture.md`: شرح المعمارية.
+
+## 1. المتطلبات
 
 - Python 3.10 أو أحدث.
-- MongoDB يعمل على `mongodb://localhost:27017/`.
+- MongoDB يعمل محليًا على `mongodb://localhost:27017/`.
 - Java 17 أو 21 عند تشغيل Spark.
-- Apache Spark 3.5 عند تشغيل الملف الكبير.
+- Apache Spark 3.5 عند تجربة مسار الملف الكبير.
 - MongoDB Spark Connector عند تشغيل PySpark.
 
-## التثبيت
+## 2. التثبيت
 
 ```bash
 git clone <repository-url>
@@ -20,9 +35,37 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-تأكد من تشغيل MongoDB قبل تشغيل خط البيانات. الإعدادات المهمة هي `MONGO_URI` و`DB_NAME` و`SMALL_FILE_THRESHOLD_MB` و`BATCH_SIZE` و`SPARK_MASTER`، ويمكن ضبطها مباشرة كمتغيرات بيئة عند الحاجة.
+تأكد من تشغيل MongoDB قبل تنفيذ الأوامر التي تتصل بقاعدة البيانات. يمكن نسخ إعدادات البيئة عند الحاجة:
 
-## إنشاء عينة قابلة لإعادة الإنتاج
+```bash
+cp .env.example .env
+```
+
+الإعدادات الافتراضية مناسبة للتشغيل المحلي. يمكن تغيير `MONGO_URI` و`DB_NAME` و`BATCH_SIZE` و`SMALL_FILE_THRESHOLD_MB` و`SPARK_MASTER` عبر متغيرات البيئة.
+
+## 3. اختبار المشروع النصفي
+
+شغّل الاختبارات:
+
+```bash
+pytest -q
+python -m compileall src config tests
+```
+
+لتشغيل العينة الصغيرة باستخدام Python Batch:
+
+```bash
+python -m src.main data/orders_sample.csv
+```
+
+يختار النظام المحرك حسب حجم الملف، ويطبع حجم الملف وسبب الاختيار. بعد التشغيل تُكتب البيانات في:
+
+- `orders_raw`: السجلات كما وصلت قبل التنظيف.
+- `orders_validated`: السجلات السليمة والمصححة.
+- `orders_quarantine`: السجلات التي لا يمكن تصحيحها بأمان.
+- `reports/results.json`: الزمن والعدادات ومعدل المعالجة.
+
+لإنشاء عينة من ملف الدكتور:
 
 ```bash
 python src/create_small_sample.py \
@@ -31,22 +74,7 @@ python src/create_small_sample.py \
   --rows 100000
 ```
 
-العينة الموجودة في `data/orders_sample.csv` جاهزة للتجربة.
-
-## تشغيل مسار Python Batch
-
-```bash
-python -m src.main data/orders_sample.csv
-```
-
-يفحص البرنامج حجم الملف ويختار `python_batch` للملف الصغير. يطبع رقم كل دفعة وزمن الإدخال ومعدل المعالجة. بعد التشغيل تظهر البيانات في:
-
-- `orders_raw`: جميع السجلات كما وصلت قبل التنظيف.
-- `orders_validated`: السجلات السليمة والمصححة.
-- `orders_quarantine`: السجلات التي لا يمكن تصحيحها مع أسباب العزل.
-- `reports/results.json`: العدادات والزمن ومعدل المعالجة.
-
-## تشغيل مسار PySpark
+لتشغيل الملف الكبير باستخدام PySpark:
 
 ```bash
 spark-submit \
@@ -54,48 +82,151 @@ spark-submit \
   src/main.py orders_huge_mixed_quality.csv
 ```
 
-يستخدم هذا المسار Schema ثابتة ويقرأ الحقول كسلاسل نصية في Raw للمحافظة على القيم غير النظيفة. لا يستخدم Pandas.
+## 4. تشغيل الواجهة الموحدة
 
-## قواعد الجودة
+```bash
+uvicorn src.api:app --host 127.0.0.1 --port 8000
+```
 
-يطبق الخط قواعد الأرقام العربية والعملة وفواصل الآلاف والأسعار بالكلمات المعروفة وتنظيف الهاتف وإصلاح رموز البريد وتوحيد التاريخ وتطبيع الحالة وتحليل JSON للعناصر. يحتفظ كل تصحيح بـ`field` و`original_value` و`corrected_value` و`rule_code`، بينما يحتوي Quarantine على `error_codes` و`error_details` و`raw_record`.
+تتوفر صفحة Swagger في:
 
-يتعرف المنظف على أسماء أعمدة شائعة بالإنجليزية والعربية مثل `order_id` و`OrderID` و`Order Number` و`رقم الطلب`، مع بدائل السعر والعميل والتاريخ والمنتجات.
+```text
+http://127.0.0.1:8000/docs
+```
 
-## اختبار Idempotency وUpsert
+فحص حالة الخدمة:
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+تشغيل خط الإدخال من خلال API:
+
+```bash
+curl -X POST http://127.0.0.1:8000/ingest \
+  -H 'Content-Type: application/json' \
+  -d '{"file_path":"data/orders_sample.csv"}'
+```
+
+## 5. الاستعلامات والفهارس وExplain
+
+إنشاء الفهارس الثلاثة:
+
+```bash
+curl -X POST http://127.0.0.1:8000/indexes
+```
+
+الاستعلامات المتوفرة:
+
+- `orders_by_status`
+- `customer_orders`
+- `orders_in_date_range`
+- `high_value_orders`
+- `recent_orders`
+
+عرض قائمة الاستعلامات أو تشغيل استعلام:
+
+```bash
+curl http://127.0.0.1:8000/queries
+curl http://127.0.0.1:8000/queries/orders_by_status
+```
+
+تنفيذ `executionStats` قبل وبعد الفهارس:
+
+```bash
+curl -X POST http://127.0.0.1:8000/indexes/explain
+```
+
+## 6. تقارير Aggregation
+
+التقارير الخمسة هي:
+
+- `sales_by_day`
+- `top_products`
+- `top_customers`
+- `orders_by_status`
+- `price_summary`
+
+تشغيلها:
+
+```bash
+curl http://127.0.0.1:8000/aggregations/sales_by_day
+curl http://127.0.0.1:8000/aggregations/top_products
+curl http://127.0.0.1:8000/aggregations/top_customers
+curl http://127.0.0.1:8000/aggregations/orders_by_status
+curl http://127.0.0.1:8000/aggregations/price_summary
+```
+
+## 7. Materialized Views
+
+العرضان الماديان هما:
+
+- `daily_sales_summary`
+- `top_products_summary`
+
+تحديث كل عرض:
+
+```bash
+curl -X POST http://127.0.0.1:8000/views/daily_sales_summary/run
+curl -X POST http://127.0.0.1:8000/views/top_products_summary/run
+curl -X POST http://127.0.0.1:8000/refresh-mv
+```
+
+قراءة النتائج:
+
+```bash
+curl http://127.0.0.1:8000/views/daily_sales_summary
+curl http://127.0.0.1:8000/views/top_products_summary
+```
+
+يستخدم التحديث سجل `materialized_view_state` وقيمة `updated_at` لمعالجة التغييرات الجديدة فقط في التشغيلات اللاحقة، مع حفظ مساهمة كل `order_id` لمنع تكرار تأثير نفس الطلب.
+
+## 8. المهام المجدولة
+
+المهمتان هما:
+
+- `refresh_daily_sales`: كل 15 دقيقة.
+- `refresh_top_products`: كل 30 دقيقة.
+
+عرض المهام أو تشغيلها يدويًا:
+
+```bash
+curl http://127.0.0.1:8000/jobs
+curl -X POST http://127.0.0.1:8000/jobs/refresh_daily_sales/run
+curl -X POST http://127.0.0.1:8000/jobs/refresh_top_products/run
+```
+
+لتفعيل الجدولة أثناء تشغيل API:
+
+```bash
+ENABLE_SCHEDULER=true uvicorn src.api:app --host 127.0.0.1 --port 8000
+```
+
+يسجل كل Job وقت البداية والنهاية وحالة النجاح أو الفشل.
+
+## 9. إعادة التشغيل والاختبار
+
+إعادة تشغيل نفس ملف الإدخال لا تزيد عدد Business Records في `orders_validated` لأن الكتابة تعتمد على `order_id` كـUnique Business Key مع Upsert:
 
 ```bash
 python -m src.main data/orders_sample.csv
 python -m src.main data/orders_sample.csv
 ```
 
-قد يحتفظ `orders_raw` بتشغيل جديد لأغراض التتبع، لكن عدد Business Records في `orders_validated` حسب `order_id` لا يزيد. راجع `inserted_count` و`updated_count` و`unchanged_count` في `reports/results.json`.
+ثم راجع `reports/results.json` وعدادات `inserted_count` و`updated_count` و`unchanged_count`.
 
-ولتنفيذ الفحص الآلي لنفس الملف مرتين:
+يمكن تنفيذ الفحص الآلي مباشرة:
 
 ```bash
 python src/idempotency_check.py data/orders_sample.csv
 ```
 
-يُظهر الأمر عدد Business Records بعد التشغيل الأول والثاني، ويفشل إذا زاد العدد بعد إعادة التشغيل.
+يفشل الأمر إذا زاد عدد Business Records بعد إعادة تشغيل نفس الملف.
 
-## الاختبارات
+## 10. اختبارات المرحلة النهائية
 
 ```bash
 pytest -q
-python -m compileall src config tests
 ```
 
-الاختبارات تغطي التنظيف والتصنيف والتاريخ وJSON والسجلات الناقصة وأسماء الأعمدة البديلة وموجّه الملفات.
-
-## بنية المشروع
-
-```text
-config/       الإعدادات
-src/          كود خط البيانات
-tests/        الاختبارات
-data/         العينة الصغيرة
-reports/      النتائج
-```
-
-هذه النسخة خاصة بمتطلبات المشروع النصفي. إضافات المرحلة النهائية موجودة في فرع `final`.
+يجب أن تنجح اختبارات التنظيف والتصنيف والاستعلامات والتجميعات والعروض المادية وتعريف المهام.
